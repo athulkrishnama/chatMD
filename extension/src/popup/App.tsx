@@ -4,7 +4,6 @@ import {
   Button,
   StatusView,
   WelcomeView,
-  WrappedView,
   SetupView,
   HistoryView
 } from './components';
@@ -157,9 +156,14 @@ function App() {
   };
 
   const handleSelectHistoryItem = (wrapId: string) => {
-    localStorage.setItem('activeWrapId', wrapId);
-    setActiveWrapId(wrapId);
-    setAppState('viewing');
+    const wrap = history.wraps.find(w => w.id === wrapId);
+    if (wrap?.status === 'completed') {
+      chrome.tabs.create({ url: `http://localhost:3000/wrap/${wrapId}` });
+    } else {
+      localStorage.setItem('activeWrapId', wrapId);
+      setActiveWrapId(wrapId);
+      setAppState('viewing');
+    }
   };
 
   const handleBackToHistory = () => {
@@ -264,16 +268,21 @@ function App() {
       );
     }
 
-    if (wrapState.status === 'completed' && wrapState.profile && wrapState.wrapped && wrapState.chatName) {
+    if (wrapState.status === 'completed' && wrapState.chatName) {
       return (
-        <WrappedView 
-          data={{
-            success: true,
-            chatName: wrapState.chatName,
-            profile: wrapState.profile,
-            wrapped: wrapState.wrapped
-          }}
-          onBack={handleBackToHistory} 
+        <StatusView
+          message="Your Wrapped is ready!"
+          actionButton={
+            <div className="flex gap-2 w-full max-w-[240px]">
+              <Button onClick={handleBackToHistory}>Back to History</Button>
+              <Button onClick={() => {
+                chrome.tabs.create({ url: `http://localhost:3000/wrap/${activeWrapId}` });
+                handleBackToHistory();
+              }}>
+                Open Wrapped
+              </Button>
+            </div>
+          }
         />
       );
     }

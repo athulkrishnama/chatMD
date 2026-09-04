@@ -1,0 +1,234 @@
+import { useState, useMemo } from 'react';
+import { IntroSection } from './sections/IntroSection';
+import { OverviewSection } from './sections/OverviewSection';
+import { WhoCarriedSection } from './sections/WhoCarriedSection';
+import { InitiativeAuditSection } from './sections/InitiativeAuditSection';
+import { ResponseTimeSection } from './sections/ResponseTimeSection';
+import { CommunicationStyleSection } from './sections/CommunicationStyleSection';
+import { CircadianAuditSection } from './sections/CircadianAuditSection';
+import { InfiniteYapSection } from './sections/InfiniteYapSection';
+import { ChatChemistryScoreSection } from './sections/ChatChemistryScoreSection';
+import { ChatChemistrySection } from './sections/ChatChemistrySection';
+import { VocabularySection } from './sections/VocabularySection';
+import { FinalSection } from './sections/FinalSection';
+import { RelationshipProfile, WrappedInsight } from '../shared/wrappedTypes';
+
+interface WrappedPageProps {
+  data: {
+    success: boolean;
+    chatName: string;
+    creatorName: string;
+    profile: RelationshipProfile;
+    wrapped: WrappedInsight;
+  };
+}
+
+export function WrappedPage({ data }: WrappedPageProps) {
+  const [activeStep, setActiveStep] = useState(0);
+  
+  // SAFE DEFAULTS FOR EVERYTHING
+  const chatName = data?.chatName || "Chat";
+  const creatorName = data?.creatorName || "You";
+  
+  const p = data?.profile || {} as any;
+  const overview = p.overview || {};
+  const messageBalance = p.messageBalance || { you: {}, them: {} };
+  const streaks = p.streaks || {};
+  const activity = p.activity || {};
+  const emojis = p.emojis || { you: [], them: [], topOverall: null };
+  const initiation = p.conversationInitiation || {};
+  const replyTime = p.replyTime || {};
+  const engagement = p.engagement || {};
+
+  const w = data?.wrapped || {} as any;
+
+  const totalSteps = 12;
+
+  const handleNext = () => {
+    window.scrollTo({ top: 0, behavior: 'auto' });
+    setActiveStep((prev) => Math.min(prev + 1, totalSteps - 1));
+  };
+
+  const allEmojis = useMemo(() => {
+    const combined = [...(emojis.you || []), ...(emojis.them || [])];
+    const counts: Record<string, number> = {};
+    combined.forEach(e => {
+      counts[e.emoji] = (counts[e.emoji] || 0) + e.count;
+    });
+    return Object.entries(counts)
+      .map(([emoji, count]) => ({ emoji, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8);
+  }, [emojis]);
+
+  const adjustedBalance = {
+    you: { messages: messageBalance.you?.count || 0, percentage: messageBalance.you?.percentage || 0 },
+    them: { messages: messageBalance.them?.count || 0, percentage: messageBalance.them?.percentage || 0 }
+  };
+  
+  const safeInitiation = {
+    youPercentage: initiation.youPercentage || 0,
+    themPercentage: initiation.themPercentage || 0
+  };
+
+  const safeReplyTime = {
+    youMedianMinutes: replyTime.youMedianMinutes || 0,
+    themMedianMinutes: replyTime.themMedianMinutes || 0
+  };
+  
+  const safeEngagement = {
+    questionsByYou: engagement.questionsByYou || 0,
+    questionsByThem: engagement.questionsByThem || 0,
+    doubleTextsByYou: engagement.doubleTextsByYou || 0,
+    doubleTextsByThem: engagement.doubleTextsByThem || 0,
+    longestConversationMinutes: engagement.longestConversationMinutes || 0
+  };
+
+  const safeActivity = {
+    peakHour: activity.peakHour || 0,
+    peakDay: activity.peakDay || "Unknown",
+    nightMessagePercentage: activity.nightMessagePercentage || 0
+  };
+
+  const safeWrapped = {
+    chatChemistryScore: w.chatChemistryScore || 0,
+    relationshipDynamic: w.relationshipType || w.relationshipDynamic || "THE CHAOTIC DUO",
+    roast: w.roast || w.summary || "Y'all talk too much, but it's giving iconic energy."
+  };
+
+  return (
+    <>
+      <div className="fixed inset-0 pointer-events-none -z-10 w-full h-full bg-[#1f1f1f]">
+        <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="brutalist-dots" width="24" height="24" patternUnits="userSpaceOnUse">
+              <circle cx="3" cy="3" r="1.5" fill="#383838"></circle>
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#brutalist-dots)"></rect>
+        </svg>
+      </div>
+
+      <main className="flex flex-col relative w-full bg-surface-cream mx-auto max-w-[480px] shadow-2xl min-h-screen overflow-hidden">
+        {activeStep === 0 && (
+          <IntroSection 
+            chatName={chatName}
+            creatorName={creatorName}
+            totalMessages={overview.totalMessages || 0}
+            daysOfChaos={overview.activeDays || 0}
+            topEmoji={emojis.topOverall?.emoji || '💀'}
+            avgMessagesPerDay={overview.avgMessagesPerDay || 0}
+            onStart={handleNext}
+          />
+        )}
+
+        {activeStep === 1 && (
+          <OverviewSection creatorName={creatorName} 
+            chatName={chatName}
+            totalMessages={overview.totalMessages || 0}
+            avgMessagesPerDay={overview.avgMessagesPerDay || 0}
+            longestStreak={streaks.longestDays || 0}
+            activePercentage={((overview.activeDays || 0) / (overview.chatDurationDays || 1)) * 100 || 0}
+            totalConversations={overview.totalConversations || 0}
+            peakDay={safeActivity.peakDay}
+            peakHour={safeActivity.peakHour}
+            chapter={0}
+            totalChapters={totalSteps - 2}
+            onNext={handleNext}
+          />
+        )}
+
+        {activeStep === 2 && (
+          <WhoCarriedSection creatorName={creatorName} 
+            chatName={chatName}
+            balance={adjustedBalance}
+            chapter={1}
+            totalChapters={totalSteps - 2}
+            onNext={handleNext}
+          />
+        )}
+
+        {activeStep === 3 && (
+          <InitiativeAuditSection creatorName={creatorName} 
+            chatName={chatName}
+            initiation={safeInitiation}
+            chapter={2}
+            totalChapters={totalSteps - 2}
+            onNext={handleNext}
+          />
+        )}
+
+        {activeStep === 4 && (
+          <ResponseTimeSection creatorName={creatorName} 
+            chatName={chatName}
+            replyTime={safeReplyTime}
+            chapter={3}
+            totalChapters={totalSteps - 2}
+            onNext={handleNext}
+          />
+        )}
+
+        {activeStep === 5 && (
+          <CommunicationStyleSection creatorName={creatorName} 
+            chatName={chatName}
+            engagement={safeEngagement}
+            chapter={4}
+            totalChapters={totalSteps - 2}
+            onNext={handleNext}
+          />
+        )}
+
+        {activeStep === 6 && (
+          <CircadianAuditSection 
+            activity={safeActivity}
+            chapter={5}
+            totalChapters={totalSteps - 2}
+            onNext={handleNext}
+          />
+        )}
+
+        {activeStep === 7 && (
+          <InfiniteYapSection 
+            longestConversationMinutes={safeEngagement.longestConversationMinutes}
+            chapter={6}
+            totalChapters={totalSteps - 2}
+            onNext={handleNext}
+          />
+        )}
+
+        {activeStep === 8 && (
+          <ChatChemistryScoreSection 
+            score={safeWrapped.chatChemistryScore}
+            chapter={7}
+            totalChapters={totalSteps - 2}
+            onNext={handleNext}
+          />
+        )}
+
+        {activeStep === 9 && (
+          <ChatChemistrySection 
+            wrapped={safeWrapped}
+            chapter={8}
+            totalChapters={totalSteps - 2}
+            onNext={handleNext}
+          />
+        )}
+
+        {activeStep === 10 && (
+          <VocabularySection 
+            emojis={allEmojis}
+            chapter={9}
+            totalChapters={totalSteps - 2}
+            onNext={handleNext}
+          />
+        )}
+
+        {activeStep === 11 && (
+          <FinalSection 
+            chatName={chatName}
+          />
+        )}
+      </main>
+    </>
+  );
+}

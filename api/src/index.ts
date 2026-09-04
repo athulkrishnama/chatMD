@@ -2,7 +2,9 @@ import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
+import path from 'path';
 import wrapRoutes from './routes/wrapRoutes';
+import publicWrapRoutes from './routes/publicWrapRoutes';
 
 dotenv.config();
 
@@ -14,13 +16,17 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' })); // Reduced limit since we no longer send raw messages
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Static files for the web viewer (served from api/web/dist)
+app.use(express.static(path.join(__dirname, '../web/dist'), { index: false }));
+
 // Health check
 app.get('/health', (_req: Request, res: Response) => {
   res.status(200).json({ status: 'ok', message: 'ChatWrapped API is running' });
 });
 
-// Mount the async routes
+// Mount routes
 app.use('/api/wraps', wrapRoutes);
+app.use('/wrap', publicWrapRoutes);
 
 // Connect to MongoDB and start server
 mongoose

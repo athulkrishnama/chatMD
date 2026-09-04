@@ -5,7 +5,6 @@ export * from './WelcomeView';
 export * from './MessageItem';
 export * from './SenderBreakdown';
 export * from './ConversationView';
-export * from './WrappedView';
 export * from './SetupView';
 export * from './HistoryView';
 export * from './WrapHistoryCard';
