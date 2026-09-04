@@ -21,7 +21,7 @@ function getHtmlTemplate() {
 
 router.get('/:wrapId', async (req: Request, res: Response) => {
   try {
-    const { wrapId } = req.params;
+    const wrapId = req.params.wrapId as string;
     
     // Validate MongoDB ObjectId format
     const objectIdRegex = /^[0-9a-fA-F]{24}$/;
