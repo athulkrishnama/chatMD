@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "Chat Wrapped",
+  "version": "0.1.0",
+  "description": "Generate fun insights and your own Wrapped from your WhatsApp conversations.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Open Chat Wrapped"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://web.whatsapp.com/*"],
+      "js": ["whatsappReader.js"]
+    }
+  ],
+  "permissions": [
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://web.whatsapp.com/*"
+  ]
+}
