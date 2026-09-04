@@ -33,9 +33,14 @@ jobs:
         run: npm ci
 
       - name: Inject Environment Variables
+        env:
+          SECRET_API: ${{ secrets.VITE_API_URL }}
+          VAR_API: ${{ vars.VITE_API_URL }}
+          SECRET_WEB: ${{ secrets.VITE_WEB_URL }}
+          VAR_WEB: ${{ vars.VITE_WEB_URL }}
         run: |
-          echo "VITE_API_URL=${{ secrets.VITE_API_URL || vars.VITE_API_URL }}" > .env
-          echo "VITE_WEB_URL=${{ secrets.VITE_WEB_URL || vars.VITE_WEB_URL }}" >> .env
+          echo "VITE_API_URL=${SECRET_API:-$VAR_API}" > .env
+          echo "VITE_WEB_URL=${SECRET_WEB:-$VAR_WEB}" >> .env
           cat .env
 
       - name: Create build
