@@ -1,5 +1,5 @@
-import type { NormalizedMessage } from '../types/message';
-import type { EmojiStats, EmojiFrequency } from '../types/analytics';
+import type { NormalizedMessage } from './message';
+import type { EmojiStats, EmojiFrequency } from './analytics';
 
 // Matches Unicode emoji sequences (includes skin tones, ZWJ sequences, flags)
 const EMOJI_REGEX =

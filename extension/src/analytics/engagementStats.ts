@@ -1,5 +1,5 @@
-import type { NormalizedMessage } from '../types/message';
-import type { ConversationThread, EngagementStats } from '../types/analytics';
+import type { NormalizedMessage } from './message';
+import type { ConversationThread, EngagementStats } from './analytics';
 
 export function calculateEngagementStats(
   messages: NormalizedMessage[],

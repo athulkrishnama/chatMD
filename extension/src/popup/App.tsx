@@ -1,26 +1,42 @@
 import { useEffect, useState } from 'react';
 import type { CurrentChatResponse } from '../shared/types';
-import type { AnalyzeApiResponse } from '../shared/wrappedTypes';
 import {
   Button,
   StatusView,
   WelcomeView,
   WrappedView,
 } from './components';
+import { useWrapStatus } from './hooks/useWrapStatus';
+
+import { normalizeMessages } from '../analytics/normalizeMessages';
+import { groupIntoConversations } from '../analytics/conversationDetector';
+import { calculateMessageStats } from '../analytics/messageStats';
+import { calculateReplyTime } from '../analytics/replyTime';
+import { calculateActivityStats } from '../analytics/activityStats';
+import { calculateWordStats } from '../analytics/wordStats';
+import { calculateEmojiStats } from '../analytics/emojiStats';
+import { calculateEngagementStats } from '../analytics/engagementStats';
+import { calculateStreakStats } from '../analytics/streakStats';
+import { generateRelationshipProfile } from '../analytics/generateRelationshipProfile';
 
 const API_BASE = 'http://localhost:3000';
-
-type InteractionState = 'idle' | 'parsing' | 'analyzing' | 'done' | 'backend_error';
 
 function App() {
   const [loading, setLoading] = useState(true);
   const [errorState, setErrorState] = useState<'no-whatsapp' | 'no-chat' | 'error' | null>(null);
-  const [interactionState, setInteractionState] = useState<InteractionState>('idle');
   const [detectedChatName, setDetectedChatName] = useState<string | null>(null);
-  const [wrappedData, setWrappedData] = useState<AnalyzeApiResponse | null>(null);
+  const [isParsing, setIsParsing] = useState(false);
 
-  // Check connection to WhatsApp Web tab on mount and detect current chat name
+  const [activeWrapId, setActiveWrapId] = useState<string | null>(() => localStorage.getItem('activeWrapId'));
+  const wrapState = useWrapStatus(activeWrapId);
+
+  // Check connection to WhatsApp Web tab on mount
   useEffect(() => {
+    if (activeWrapId) {
+      setLoading(false);
+      return; // Skip checking chat if we are already resuming a Wrap
+    }
+
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs: chrome.tabs.Tab[]) => {
       const activeTab = tabs[0];
 
@@ -47,15 +63,16 @@ function App() {
         }
       );
     });
-  }, []);
+  }, [activeWrapId]);
 
   const handleCreateWrapped = () => {
-    setInteractionState('parsing');
+    setIsParsing(true);
 
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs: chrome.tabs.Tab[]) => {
       const activeTab = tabs[0];
       if (!activeTab || !activeTab.id) {
         setErrorState('error');
+        setIsParsing(false);
         return;
       }
 
@@ -65,20 +82,37 @@ function App() {
         async (response: CurrentChatResponse) => {
           if (chrome.runtime.lastError || !response?.success || !response.data) {
             setErrorState(chrome.runtime.lastError ? 'error' : 'no-chat');
+            setIsParsing(false);
             return;
           }
 
-          // Phase 2: Send to backend for analytics + AI
-          setInteractionState('analyzing');
-
           try {
-            const apiResponse = await fetch(`${API_BASE}/api/analyze`, {
+            const { chatName, messages } = response.data;
+            
+            // ─── Frontend Analytics Calculation ───
+            const normalized = normalizeMessages(messages);
+            const threads = groupIntoConversations(normalized);
+            
+            const msgStats = calculateMessageStats(normalized, chatName);
+            const replyStats = calculateReplyTime(normalized);
+            const activityStats = calculateActivityStats(normalized);
+            const wordStats = calculateWordStats(normalized);
+            const emojiStats = calculateEmojiStats(normalized);
+            const engagementStats = calculateEngagementStats(normalized, threads);
+            const streakStats = calculateStreakStats(normalized);
+
+            const profile = generateRelationshipProfile({
+              chatName, msgStats, replyStats, activityStats,
+              wordStats, emojiStats, engagementStats, streakStats, threads,
+            });
+
+            // ─── POST to Backend ───
+            const apiResponse = await fetch(`${API_BASE}/api/wraps`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                chatName: response.data.chatName,
-                participants: response.data.participants,
-                messages: response.data.messages,
+                chatName,
+                analytics: profile,
               }),
             });
 
@@ -86,21 +120,32 @@ function App() {
               throw new Error(`Backend error: ${apiResponse.status}`);
             }
 
-            const result: AnalyzeApiResponse = await apiResponse.json();
+            const result = await apiResponse.json();
 
-            if (!result.success) {
-              throw new Error(result.error ?? 'Unknown backend error');
+            if (result.success && result.wrapId) {
+              localStorage.setItem('activeWrapId', result.wrapId);
+              setActiveWrapId(result.wrapId);
+            } else {
+              throw new Error('Failed to start Wrap job');
             }
-
-            setWrappedData(result);
-            setInteractionState('done');
           } catch (err) {
-            console.error('[ChatWrapped] Backend call failed:', err);
-            setInteractionState('backend_error');
+            console.error('[ChatWrapped] Creation failed:', err);
+            setErrorState('error');
+          } finally {
+            setIsParsing(false);
           }
         }
       );
     });
+  };
+
+  const handleReset = () => {
+    localStorage.removeItem('activeWrapId');
+    setActiveWrapId(null);
+    setErrorState(null);
+    setLoading(true);
+    // Setting loading to true will trigger the useEffect to remount/re-check the page
+    window.location.reload(); 
   };
 
   const handleReloadTab = () => {
@@ -109,16 +154,43 @@ function App() {
     });
   };
 
-  const handleReset = () => {
-    setInteractionState('idle');
-    setWrappedData(null);
-    setErrorState(null);
-  };
-
   // ── Render logic ──────────────────────────────────────────────────────────
 
   if (loading) return <StatusView message="Connecting to WhatsApp..." />;
 
+  // ── Async Polling States ──
+  if (wrapState.status === 'pending') {
+    return <StatusView message="Your Wrapped is being prepared..." />;
+  }
+
+  if (wrapState.status === 'processing') {
+    return <StatusView message="Almost there... Putting your Wrapped together." />;
+  }
+
+  if (wrapState.status === 'failed') {
+    return (
+      <StatusView
+        message={`Something went wrong: ${wrapState.error || 'Unable to generate analysis'}`}
+        actionButton={<Button onClick={handleReset}>Try Again</Button>}
+      />
+    );
+  }
+
+  if (wrapState.status === 'completed' && wrapState.profile && wrapState.wrapped && wrapState.chatName) {
+    return (
+      <WrappedView 
+        data={{
+          success: true,
+          chatName: wrapState.chatName,
+          profile: wrapState.profile,
+          wrapped: wrapState.wrapped
+        }}
+        onBack={handleReset} 
+      />
+    );
+  }
+
+  // ── Error States ──
   if (errorState === 'no-whatsapp') {
     return (
       <StatusView
@@ -133,7 +205,7 @@ function App() {
     return (
       <StatusView
         message={isDisconnected
-          ? 'Extension disconnected. Please reload this WhatsApp tab.'
+          ? 'Extension disconnected or backend unreachable. Please try again.'
           : 'Please open a conversation first.'}
         actionButton={
           <Button onClick={isDisconnected ? handleReloadTab : handleReset}>
@@ -144,33 +216,12 @@ function App() {
     );
   }
 
-  if (interactionState === 'backend_error') {
-    return (
-      <StatusView
-        message="Could not reach the backend. Make sure the API server is running at localhost:3000."
-        actionButton={<Button onClick={handleReset}>Try Again</Button>}
-      />
-    );
-  }
-
-  if (interactionState === 'parsing') {
-    return <StatusView message="Scanning messages... (this may take a moment)" />;
-  }
-
-  if (interactionState === 'analyzing') {
-    return <StatusView message="Analyzing your chat with AI..." />;
-  }
-
-  if (interactionState === 'done' && wrappedData) {
-    return <WrappedView data={wrappedData} onBack={handleReset} />;
-  }
-
-  // Default: Welcome screen
+  // ── Default State ──
   return (
     <WelcomeView
       chatName={detectedChatName || 'your friend'}
       onStart={handleCreateWrapped}
-      isParsing={false}
+      isParsing={isParsing}
     />
   );
 }

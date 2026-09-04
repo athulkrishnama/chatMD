@@ -1,5 +1,5 @@
-import type { NormalizedMessage } from '../types/message';
-import type { ReplyTimeStats, PersonReplyStats, ReplyBuckets } from '../types/analytics';
+import type { NormalizedMessage } from './message';
+import type { ReplyTimeStats, PersonReplyStats, ReplyBuckets } from './analytics';
 
 const CONVERSATION_GAP_MS = 60 * 60 * 1000; // 60 minutes
 

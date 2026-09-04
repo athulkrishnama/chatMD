@@ -1,12 +1,16 @@
-import type {
-  WordFrequency,
-  EmojiFrequency,
-} from './analytics';
+export interface WrappedInsight {
+  relationshipType: string;
+  status: string;
+  summary: string;
+  topSignal: string;
+  funObservation: string;
+  wildCardObservation: string;
+  chatChemistryScore: number;
+  interpretationConfidence: number;
+}
 
-// ─── Compact profile sent to the AI ─────────────────────────────────────────
 export interface RelationshipProfile {
   people: { you: string; them: string };
-
   overview: {
     totalMessages: number;
     chatDurationDays: number;
@@ -14,19 +18,16 @@ export interface RelationshipProfile {
     totalConversations: number;
     avgMessagesPerDay: number;
   };
-
   messageBalance: {
     you: { count: number; percentage: number; avgCharacters: number };
     them: { count: number; percentage: number; avgCharacters: number };
   };
-
   conversationInitiation: {
     you: number;
     them: number;
     youPercentage: number;
     themPercentage: number;
   };
-
   replyTime: {
     youMedianMinutes: number;
     themMedianMinutes: number;
@@ -35,14 +36,12 @@ export interface RelationshipProfile {
     youUnder5MinPercentage: number;
     themUnder5MinPercentage: number;
   };
-
   activity: {
     peakHour: number;
     peakDay: string;
     nightMessagePercentage: number;
-    mostActiveTimeOfDay: 'morning' | 'afternoon' | 'evening' | 'night';
+    mostActiveTimeOfDay: string;
   };
-
   engagement: {
     questionsByYou: number;
     questionsByThem: number;
@@ -53,41 +52,15 @@ export interface RelationshipProfile {
     longestConversationMinutes: number;
     longestConversationMessages: number;
   };
-
-  streaks: {
-    longestDays: number;
-    currentDays: number;
-  };
-
+  streaks: { longestDays: number; currentDays: number };
   words: {
-    you: WordFrequency[];   // top 20
-    them: WordFrequency[];  // top 20
+    you: { word: string; count: number }[];
+    them: { word: string; count: number }[];
   };
-
   emojis: {
-    you: EmojiFrequency[];   // top 10
-    them: EmojiFrequency[];  // top 10
-    topOverall: EmojiFrequency | null;
+    you: { emoji: string; count: number }[];
+    them: { emoji: string; count: number }[];
+    topOverall: { emoji: string; count: number } | null;
   };
 }
 
-// ─── AI output schema ────────────────────────────────────────────────────────
-export interface WrappedInsight {
-  relationshipType: string;
-  status: string;
-  summary: string;
-  topSignal: string;
-  funObservation: string;
-  wildCardObservation: string;
-  chatChemistryScore: number;  // 0–100
-  interpretationConfidence: number; // 0–1
-}
-
-// ─── Final API response ──────────────────────────────────────────────────────
-export interface AnalyzeResponse {
-  success: boolean;
-  chatName: string;
-  profile: RelationshipProfile;
-  wrapped: WrappedInsight;
-  error?: string;
-}

@@ -1,5 +1,5 @@
-import type { MessageStats, ReplyTimeStats, ActivityStats, WordStats, EmojiStats, EngagementStats, StreakStats, ConversationThread } from '../types/analytics';
-import type { RelationshipProfile } from '../types/relationship';
+import type { MessageStats, ReplyTimeStats, ActivityStats, WordStats, EmojiStats, EngagementStats, StreakStats, ConversationThread } from './analytics';
+import type { RelationshipProfile } from './relationship';
 
 function mostActiveTimeOfDay(activity: ActivityStats): 'morning' | 'afternoon' | 'evening' | 'night' {
   const buckets = [

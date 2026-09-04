@@ -1,5 +1,5 @@
-import type { NormalizedMessage } from '../types/message';
-import type { ConversationThread } from '../types/analytics';
+import type { NormalizedMessage } from './message';
+import type { ConversationThread } from './analytics';
 
 const CONVERSATION_GAP_MINUTES = 60;
 

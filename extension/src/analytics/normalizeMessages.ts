@@ -1,4 +1,4 @@
-import type { RawMessage, NormalizedMessage } from '../types/message';
+import type { RawMessage, NormalizedMessage } from './message';
 
 /**
  * Parses WhatsApp date + time strings into a proper Date object.

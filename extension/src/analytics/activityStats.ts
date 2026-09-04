@@ -1,5 +1,5 @@
-import type { NormalizedMessage } from '../types/message';
-import type { ActivityStats } from '../types/analytics';
+import type { NormalizedMessage } from './message';
+import type { ActivityStats } from './analytics';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 

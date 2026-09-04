@@ -1,5 +1,5 @@
-import type { NormalizedMessage } from '../types/message';
-import type { StreakStats } from '../types/analytics';
+import type { NormalizedMessage } from './message';
+import type { StreakStats } from './analytics';
 
 function dateKey(d: Date): string {
   return d.toISOString().split('T')[0]; // "YYYY-MM-DD"

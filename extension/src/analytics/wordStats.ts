@@ -1,5 +1,5 @@
-import type { NormalizedMessage } from '../types/message';
-import type { WordStats, WordFrequency } from '../types/analytics';
+import type { NormalizedMessage } from './message';
+import type { WordStats, WordFrequency } from './analytics';
 
 const STOPWORDS = new Set([
   'the', 'is', 'a', 'an', 'to', 'of', 'and', 'in', 'that', 'it', 'for',

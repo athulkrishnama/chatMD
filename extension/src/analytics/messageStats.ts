@@ -1,5 +1,5 @@
-import type { NormalizedMessage } from '../types/message';
-import type { MessageStats, PersonStats } from '../types/analytics';
+import type { NormalizedMessage } from './message';
+import type { MessageStats, PersonStats } from './analytics';
 
 function median(values: number[]): number {
   if (values.length === 0) return 0;
