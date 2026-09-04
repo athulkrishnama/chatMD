@@ -1,0 +1,48 @@
+name: Deploy Extension
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    name: Deployment
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./extension
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+          cache-dependency-path: extension/package-lock.json
+
+      - name: Install node modules
+        run: npm ci
+
+      - name: Create build
+        run: npm run build
+
+      - name: Zip build output
+        run: cd dist && zip -r ../extension.zip .
+
+      - name: Create release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: extension/extension.zip
+          generate_release_notes: true
+

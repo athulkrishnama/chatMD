@@ -5,3 +5,4 @@ export * from './WelcomeView';
 export * from './MessageItem';
 export * from './SenderBreakdown';
 export * from './ConversationView';
+export * from './WrappedView';
