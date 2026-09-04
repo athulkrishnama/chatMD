@@ -73,3 +73,16 @@ export interface AnalyzeApiResponse {
   wrapped: WrappedInsight;
   error?: string;
 }
+
+export interface WrapHistoryItem {
+  id: string;
+  creatorName: string;
+  chatName: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  createdAt: string;
+}
+
+export interface WrapHistoryResponse {
+  success: boolean;
+  wraps: WrapHistoryItem[];
+}

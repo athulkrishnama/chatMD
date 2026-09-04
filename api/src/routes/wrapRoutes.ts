@@ -18,10 +18,12 @@ router.post('/', async (req: Request, res: Response) => {
       });
     }
 
-    const { chatName, analytics } = parsed.data;
+    const { creatorName, deviceId, chatName, analytics } = parsed.data;
 
     // 2. Create MongoDB document in 'pending' state
     const wrap = await Wrap.create({
+      creatorName: creatorName.trim(),
+      deviceId,
       chatName,
       analytics,
       status: 'pending',
@@ -83,5 +85,39 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/wraps/device/:deviceId
+router.get('/device/:deviceId', async (req: Request, res: Response) => {
+  try {
+    const { deviceId } = req.params;
+    
+    // Basic UUID format validation (simple regex)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(deviceId)) {
+      return res.status(400).json({ success: false, error: 'Invalid device ID' });
+    }
+
+    const wraps = await Wrap.find({ deviceId })
+      .sort({ createdAt: -1 })
+      .select('_id creatorName chatName status createdAt');
+
+    const mappedWraps = wraps.map(w => ({
+      id: w._id.toString(),
+      creatorName: w.creatorName,
+      chatName: w.chatName,
+      status: w.status,
+      createdAt: w.createdAt,
+    }));
+
+    res.json({
+      success: true,
+      wraps: mappedWraps,
+    });
+  } catch (error) {
+    console.error('[WrapAPI] GET /api/wraps/device/:deviceId error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
 export default router;
+
 

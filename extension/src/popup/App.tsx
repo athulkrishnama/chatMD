@@ -5,8 +5,13 @@ import {
   StatusView,
   WelcomeView,
   WrappedView,
+  SetupView,
+  HistoryView
 } from './components';
 import { useWrapStatus } from './hooks/useWrapStatus';
+import { useWrapHistory } from './hooks/useWrapHistory';
+import { wrapApi } from './services/wrapApi';
+import { getDeviceId, getCreatorName } from '../shared/device';
 
 import { normalizeMessages } from '../analytics/normalizeMessages';
 import { groupIntoConversations } from '../analytics/conversationDetector';
@@ -19,36 +24,57 @@ import { calculateEngagementStats } from '../analytics/engagementStats';
 import { calculateStreakStats } from '../analytics/streakStats';
 import { generateRelationshipProfile } from '../analytics/generateRelationshipProfile';
 
-const API_BASE = 'http://localhost:3000';
+type AppState = 'initializing' | 'setup' | 'history' | 'creating' | 'viewing';
 
 function App() {
-  const [loading, setLoading] = useState(true);
+  const [appState, setAppState] = useState<AppState>('initializing');
+  
+  // Creation state
   const [errorState, setErrorState] = useState<'no-whatsapp' | 'no-chat' | 'error' | null>(null);
   const [detectedChatName, setDetectedChatName] = useState<string | null>(null);
   const [isParsing, setIsParsing] = useState(false);
 
+  // Storage
   const [activeWrapId, setActiveWrapId] = useState<string | null>(() => localStorage.getItem('activeWrapId'));
   const wrapState = useWrapStatus(activeWrapId);
+  const history = useWrapHistory();
+  const creatorName = getCreatorName();
 
-  // Check connection to WhatsApp Web tab on mount
+  // ── Initialization ──
   useEffect(() => {
-    if (activeWrapId) {
-      setLoading(false);
-      return; // Skip checking chat if we are already resuming a Wrap
+    if (!creatorName) {
+      setAppState('setup');
+      return;
     }
 
+    if (activeWrapId && (wrapState.status === 'pending' || wrapState.status === 'processing')) {
+      // If we are currently processing something, prioritize viewing it
+      setAppState('viewing');
+      return;
+    }
+
+    // Default to history view once setup is complete
+    setAppState('history');
+  }, [creatorName, activeWrapId, wrapState.status]);
+
+  // ── Handlers ──
+  const handleSetupComplete = () => {
+    setAppState('history');
+  };
+
+  const handleCreateNewClick = () => {
+    setAppState('creating');
+    
+    // Check WhatsApp context immediately when entering creation flow
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs: chrome.tabs.Tab[]) => {
       const activeTab = tabs[0];
-
       if (!activeTab || !activeTab.id || !activeTab.url) {
         setErrorState('error');
-        setLoading(false);
         return;
       }
 
       if (!activeTab.url.includes('web.whatsapp.com')) {
         setErrorState('no-whatsapp');
-        setLoading(false);
         return;
       }
 
@@ -59,14 +85,14 @@ function App() {
           if (!chrome.runtime.lastError && response?.chatName) {
             setDetectedChatName(response.chatName);
           }
-          setLoading(false);
         }
       );
     });
-  }, [activeWrapId]);
+  };
 
-  const handleCreateWrapped = () => {
+  const handleStartParsing = () => {
     setIsParsing(true);
+    setErrorState(null);
 
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs: chrome.tabs.Tab[]) => {
       const activeTab = tabs[0];
@@ -88,8 +114,10 @@ function App() {
 
           try {
             const { chatName, messages } = response.data;
+            const currentCreator = getCreatorName() || 'Unknown';
+            const currentDevice = getDeviceId();
             
-            // ─── Frontend Analytics Calculation ───
+            // Analytics
             const normalized = normalizeMessages(messages);
             const threads = groupIntoConversations(normalized);
             
@@ -106,25 +134,14 @@ function App() {
               wordStats, emojiStats, engagementStats, streakStats, threads,
             });
 
-            // ─── POST to Backend ───
-            const apiResponse = await fetch(`${API_BASE}/api/wraps`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                chatName,
-                analytics: profile,
-              }),
-            });
-
-            if (!apiResponse.ok) {
-              throw new Error(`Backend error: ${apiResponse.status}`);
-            }
-
-            const result = await apiResponse.json();
+            // API POST
+            const result = await wrapApi.createWrap(currentCreator, currentDevice, chatName, profile);
 
             if (result.success && result.wrapId) {
               localStorage.setItem('activeWrapId', result.wrapId);
               setActiveWrapId(result.wrapId);
+              setAppState('viewing');
+              history.refresh(); // Update history in the background
             } else {
               throw new Error('Failed to start Wrap job');
             }
@@ -139,13 +156,16 @@ function App() {
     });
   };
 
-  const handleReset = () => {
+  const handleSelectHistoryItem = (wrapId: string) => {
+    localStorage.setItem('activeWrapId', wrapId);
+    setActiveWrapId(wrapId);
+    setAppState('viewing');
+  };
+
+  const handleBackToHistory = () => {
     localStorage.removeItem('activeWrapId');
     setActiveWrapId(null);
-    setErrorState(null);
-    setLoading(true);
-    // Setting loading to true will trigger the useEffect to remount/re-check the page
-    window.location.reload(); 
+    setAppState('history');
   };
 
   const handleReloadTab = () => {
@@ -154,76 +174,115 @@ function App() {
     });
   };
 
-  // ── Render logic ──────────────────────────────────────────────────────────
+  // ── Render ──
 
-  if (loading) return <StatusView message="Connecting to WhatsApp..." />;
-
-  // ── Async Polling States ──
-  if (wrapState.status === 'pending') {
-    return <StatusView message="Your Wrapped is being prepared..." />;
+  if (appState === 'initializing') {
+    return <StatusView message="Loading..." />;
   }
 
-  if (wrapState.status === 'processing') {
-    return <StatusView message="Almost there... Putting your Wrapped together." />;
+  if (appState === 'setup') {
+    return <SetupView onComplete={handleSetupComplete} />;
   }
 
-  if (wrapState.status === 'failed') {
+  if (appState === 'history') {
+    if (history.loading && history.wraps.length === 0) {
+      return <StatusView message="Loading your history..." />;
+    }
+    
+    if (history.error && history.wraps.length === 0) {
+      return (
+        <StatusView
+          message="Couldn't load your Wrappeds."
+          actionButton={<Button onClick={history.refresh}>Try Again</Button>}
+        />
+      );
+    }
+
     return (
-      <StatusView
-        message={`Something went wrong: ${wrapState.error || 'Unable to generate analysis'}`}
-        actionButton={<Button onClick={handleReset}>Try Again</Button>}
+      <HistoryView 
+        wraps={history.wraps}
+        creatorName={creatorName || ''}
+        onSelect={handleSelectHistoryItem}
+        onCreateNew={handleCreateNewClick}
       />
     );
   }
 
-  if (wrapState.status === 'completed' && wrapState.profile && wrapState.wrapped && wrapState.chatName) {
+  if (appState === 'creating') {
+    if (errorState === 'no-whatsapp') {
+      return (
+        <StatusView
+          message="Open WhatsApp Web and select a conversation first."
+          actionButton={<Button onClick={() => setAppState('history')}>Back to History</Button>}
+        />
+      );
+    }
+
+    if (errorState === 'no-chat' || errorState === 'error') {
+      const isDisconnected = errorState === 'error';
+      return (
+        <StatusView
+          message={isDisconnected
+            ? 'Extension disconnected or backend unreachable. Please try again.'
+            : 'Please open a conversation first.'}
+          actionButton={
+            <div className="flex gap-2 w-full max-w-[240px]">
+              <Button onClick={() => setAppState('history')}>Cancel</Button>
+              <Button onClick={isDisconnected ? handleReloadTab : handleCreateNewClick}>
+                {isDisconnected ? 'Reload' : 'Retry'}
+              </Button>
+            </div>
+          }
+        />
+      );
+    }
+
     return (
-      <WrappedView 
-        data={{
-          success: true,
-          chatName: wrapState.chatName,
-          profile: wrapState.profile,
-          wrapped: wrapState.wrapped
-        }}
-        onBack={handleReset} 
+      <WelcomeView
+        chatName={detectedChatName || 'your friend'}
+        onStart={handleStartParsing}
+        isParsing={isParsing}
       />
     );
   }
 
-  // ── Error States ──
-  if (errorState === 'no-whatsapp') {
-    return (
-      <StatusView
-        message="Open WhatsApp Web and select a conversation first."
-        actionButton={<Button onClick={() => window.close()}>Close</Button>}
-      />
-    );
+  if (appState === 'viewing') {
+    if (wrapState.status === 'pending') {
+      return <StatusView message="Your Wrapped is being prepared..." />;
+    }
+
+    if (wrapState.status === 'processing') {
+      return <StatusView message="Almost there... Putting your Wrapped together." />;
+    }
+
+    if (wrapState.status === 'failed') {
+      return (
+        <StatusView
+          message={`Something went wrong: ${wrapState.error || 'Unable to generate analysis'}`}
+          actionButton={<Button onClick={handleBackToHistory}>Back to History</Button>}
+        />
+      );
+    }
+
+    if (wrapState.status === 'completed' && wrapState.profile && wrapState.wrapped && wrapState.chatName) {
+      return (
+        <WrappedView 
+          data={{
+            success: true,
+            chatName: wrapState.chatName,
+            profile: wrapState.profile,
+            wrapped: wrapState.wrapped
+          }}
+          onBack={handleBackToHistory} 
+        />
+      );
+    }
+    
+    // Fallback if viewing state is broken
+    return <StatusView message="Loading Wrapped..." />;
   }
 
-  if (errorState === 'no-chat' || errorState === 'error') {
-    const isDisconnected = errorState === 'error';
-    return (
-      <StatusView
-        message={isDisconnected
-          ? 'Extension disconnected or backend unreachable. Please try again.'
-          : 'Please open a conversation first.'}
-        actionButton={
-          <Button onClick={isDisconnected ? handleReloadTab : handleReset}>
-            {isDisconnected ? 'Reload Tab' : 'Try Again'}
-          </Button>
-        }
-      />
-    );
-  }
-
-  // ── Default State ──
-  return (
-    <WelcomeView
-      chatName={detectedChatName || 'your friend'}
-      onStart={handleCreateWrapped}
-      isParsing={isParsing}
-    />
-  );
+  return null;
 }
 
 export default App;

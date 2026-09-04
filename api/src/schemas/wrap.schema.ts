@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
 export const createWrapSchema = z.object({
+  creatorName: z.string().min(1).max(100),
+  deviceId: z.string().uuid(),
   chatName: z.string().min(1, 'Chat name is required'),
   analytics: z.object({
     people: z.object({
@@ -63,4 +65,3 @@ export const createWrapSchema = z.object({
     }),
   }),
 });
-
