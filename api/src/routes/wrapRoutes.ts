@@ -50,7 +50,7 @@ router.post('/', async (req: Request, res: Response) => {
 // GET /api/wraps/:id
 router.get('/:id', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const wrap = await Wrap.findById(id);
     if (!wrap) {
@@ -88,7 +88,7 @@ router.get('/:id', async (req: Request, res: Response) => {
 // GET /api/wraps/device/:deviceId
 router.get('/device/:deviceId', async (req: Request, res: Response) => {
   try {
-    const { deviceId } = req.params;
+    const deviceId = req.params.deviceId as string;
     
     // Basic UUID format validation (simple regex)
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
