@@ -16,7 +16,7 @@ function getClient(): OpenAI {
       baseURL: 'https://openrouter.ai/api/v1',
       apiKey: apiKey,
       defaultHeaders: {
-        'HTTP-Referer': 'http://localhost:3000', // Required by OpenRouter
+        'HTTP-Referer': process.env.WEB_URL || 'http://localhost:3000', // Required by OpenRouter
         'X-Title': 'ChatWrapped', // Optional but recommended
       },
     });

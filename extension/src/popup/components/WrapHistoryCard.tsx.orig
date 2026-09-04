@@ -22,8 +22,7 @@ export function WrapHistoryCard({ wrap, onClick }: WrapHistoryCardProps) {
 
   const handleShare = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const baseUrl = import.meta.env.VITE_WEB_URL || 'http://localhost:3000';
-    const url = `${baseUrl}/wrap/${wrap.id}`;
+    const url = `http://localhost:3000/wrap/${wrap.id}`;
     if (navigator.share) {
       navigator.share({
         title: 'My Chat Wrapped',

@@ -158,8 +158,7 @@ function App() {
   const handleSelectHistoryItem = (wrapId: string) => {
     const wrap = history.wraps.find(w => w.id === wrapId);
     if (wrap?.status === 'completed') {
-      const baseUrl = import.meta.env.VITE_WEB_URL || 'http://localhost:3000';
-      chrome.tabs.create({ url: `${baseUrl}/wrap/${wrapId}` });
+      chrome.tabs.create({ url: `http://localhost:3000/wrap/${wrapId}` });
     } else {
       localStorage.setItem('activeWrapId', wrapId);
       setActiveWrapId(wrapId);
@@ -277,8 +276,7 @@ function App() {
             <div className="flex gap-2 w-full max-w-[240px]">
               <Button onClick={handleBackToHistory}>Back to History</Button>
               <Button onClick={() => {
-                const baseUrl = import.meta.env.VITE_WEB_URL || 'http://localhost:3000';
-                chrome.tabs.create({ url: `${baseUrl}/wrap/${activeWrapId}` });
+                chrome.tabs.create({ url: `http://localhost:3000/wrap/${activeWrapId}` });
                 handleBackToHistory();
               }}>
                 Open Wrapped
