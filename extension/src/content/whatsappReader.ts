@@ -279,8 +279,8 @@ async function scrapeAllMessages(chatName: string): Promise<ChatMessage[]> {
 
   let previousScrollTop = scrollContainer.scrollTop;
   let unchangedCount = 0;
-  const MAX_UNCHANGED = 3;
-  const MAX_SCROLLS = 40;
+  const MAX_UNCHANGED = 5; // Wait longer before giving up (network delays)
+  const MAX_SCROLLS = 300; // Drastically increased limit (300 scrolls can cover thousands of messages)
   let scrolls = 0;
 
   console.log('[ChatWrapped] Starting message scrape loop...');
@@ -292,7 +292,13 @@ async function scrapeAllMessages(chatName: string): Promise<ChatMessage[]> {
     scrollContainer.scrollTop -= scrollAmount;
     scrolls++;
 
-    await new Promise((resolve) => setTimeout(resolve, 600));
+    // Wait for WhatsApp to fetch and render older messages
+    await new Promise((resolve) => setTimeout(resolve, 800));
+
+    // If we hit the top of the current DOM, wait a bit extra for network loading
+    if (scrollContainer.scrollTop === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
 
     if (scrollContainer.scrollTop === previousScrollTop || scrollContainer.scrollTop === 0) {
       unchangedCount++;
