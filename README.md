@@ -72,15 +72,18 @@ npm run build
 ### Project Documentation
 For Software:
 
-# Screenshots (Add at least 3)
-![Screenshot1](Add screenshot 1 here with proper name)
+# Screenshots
+![Screenshot4](./assets/screenshot_4.png)
+*Additional insights rendered in beautiful Brutalist UI*
+![Screenshot3](./assets/screenshot_3.png)
+*The Grand Calculation: The AI roasting the relationship dynamic*
+
+![Screenshot2](./assets/screenshot_2.png)
+*Who Carried This Chat? Exposing the message balance*
+![Screenshot1](./assets/screenshot_1.png)
 *The Neo-Brutalist Intro Screen generating the Wrapped data*
 
-![Screenshot2](Add screenshot 2 here with proper name)
-*Who Carried This Chat? Exposing the message balance*
 
-![Screenshot3](Add screenshot 3 here with proper name)
-*The Grand Calculation: The AI roasting the relationship dynamic*
 
 # Diagrams
 ![Workflow](Add your workflow/architecture diagram here)

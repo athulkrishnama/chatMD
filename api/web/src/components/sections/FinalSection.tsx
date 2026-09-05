@@ -58,13 +58,6 @@ export function FinalSection({ chatName }: FinalSectionProps) {
           </button>
         </FloatingSticker>
 
-        <a 
-          href="https://chatwrapped.com" 
-          target="_blank"
-          className="w-full bg-surface-cream text-border-black hover:bg-border-black hover:text-surface-cream border-[4px] border-border-black py-space-md px-space-lg font-headline-md-mobile text-headline-md-mobile uppercase tracking-tight shadow-[5px_5px_0px_#000000] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all duration-75 flex items-center justify-center gap-3 cursor-pointer text-center"
-        >
-          MAKE YOUR OWN
-        </a>
       </Reveal>
 
       <Reveal delay={0.6} direction="up">
